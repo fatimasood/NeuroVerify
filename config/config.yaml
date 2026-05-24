@@ -1,0 +1,50 @@
+# Trustify Configuration
+model:
+  text:
+    embedding_dim: 300
+    hidden_dim: 128
+    num_layers: 2
+    dropout: 0.3
+    bidirectional: true
+  
+  image:
+    backbone: "resnet50"
+    feature_dim: 2048
+    node_dim: 128
+    num_gnn_layers: 3
+  
+  transformer:
+    d_model: 512
+    nhead: 8
+    num_encoder_layers: 3
+    num_decoder_layers: 3
+    dim_feedforward: 2048
+    dropout: 0.1
+  
+  fuzzy:
+    num_rules: 4
+    membership_type: "gaussian"
+    defuzzification: "centroid"
+
+training:
+  batch_size: 20
+  epochs: 20
+  learning_rate: 0.005
+  optimizer: "adam"
+  gradient_clip: 1.0
+  lr_drop_factor: 0.2
+  
+data:
+  train_split: 0.8
+  val_split: 0.1
+  test_split: 0.1
+  image_size: [224, 224]
+  max_text_length: 200
+  
+datasets:
+  twitter:
+    kaggle_path: "sudishbasnet/truthseekertwitterdatasets2023"
+  buzzfeed:
+    url: "https://raw.githubusercontent.com/BuzzFeedNews/2016-10-15-fake-news/master/data/news_samples.csv"
+  politifact:
+    url: "https://raw.githubusercontent.com/several27/FakeNewsCorpus/master/politifact.csv"
