@@ -1,6 +1,6 @@
 # Trustify: Fuzzy Logic-Based Hybrid Framework for Detecting Fake News
 
-This repository is a complete implementation of the research paper **"A novel fuzzy logic-based hybrid framework for detecting fake news"** by Bharati et al. (2026).
+This repository is a complete implementation of the research paper **"A novel fuzzy logic-based hybrid framework for detecting fake news"** 
 
 ## Overview
 
@@ -38,8 +38,7 @@ This repository is a complete implementation of the research paper **"A novel fu
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/trustify-replication.git
-cd trustify-replication
+git clone https://github.com/fatimasood/NeuroVerify.git
 
 # Create virtual environment
 python -m venv venv
@@ -121,8 +120,7 @@ Open `notebooks/colab_train.ipynb` and:
 
 ```python
 # In Colab:
-!git clone https://github.com/yourusername/trustify-replication.git
-%cd trustify-replication
+!git clone https://github.com/fatimasood/NeuroVerify.git
 !pip install -r requirements.txt
 # Then follow notebook cells
 ```
