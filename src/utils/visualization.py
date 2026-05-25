@@ -1,254 +1,282 @@
 """
-Visualization utilities for Trustify framework
+Visualization utilities for Trustify
+Architecture diagrams and result plots
 """
 
 import matplotlib.pyplot as plt
-import seaborn as sns
-import numpy as np
-import pandas as pd
-from sklearn.metrics import confusion_matrix, roc_curve, auc
+import matplotlib.patches as mpatches
+from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 import networkx as nx
-import torch
+from pathlib import Path
+import numpy as np
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
-def plot_training_history(history, save_path='outputs/plots/training_history.png'):
-    """Plot training history"""
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+def plot_trustify_architecture(output_path: str = 'plots/architecture_diagram.png'):
+    """
+    Create detailed Trustify architecture diagram.
     
-    # Loss plot
-    axes[0].plot(history['train_loss'], label='Train Loss', marker='o')
-    axes[0].set_xlabel('Epoch')
-    axes[0].set_ylabel('Loss')
-    axes[0].set_title('Training Loss')
-    axes[0].legend()
-    axes[0].grid(True)
-    
-    # Accuracy plot
-    axes[1].plot(history['train_acc'], label='Train Accuracy', marker='s')
-    axes[1].plot(history['val_acc'], label='Val Accuracy', marker='^')
-    axes[1].set_xlabel('Epoch')
-    axes[1].set_ylabel('Accuracy')
-    axes[1].set_title('Accuracy')
-    axes[1].legend()
-    axes[1].grid(True)
-    
-    plt.tight_layout()
-    plt.savefig(save_path, dpi=300, bbox_inches='tight')
-    plt.show()
-    print(f"Training history plot saved to {save_path}")
-
-
-def plot_confusion_matrix(y_true, y_pred, dataset_name, save_path='outputs/plots/'):
-    """Plot confusion matrix"""
-    cm = confusion_matrix(y_true, y_pred)
-    
-    fig, ax = plt.subplots(figsize=(8, 6))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
-                xticklabels=['Fake', 'Real'], 
-                yticklabels=['Fake', 'Real'],
-                ax=ax)
-    ax.set_xlabel('Predicted')
-    ax.set_ylabel('Actual')
-    ax.set_title(f'Confusion Matrix - {dataset_name}')
-    
-    plt.tight_layout()
-    plt.savefig(f"{save_path}/confusion_matrix_{dataset_name.lower()}.png", dpi=300, bbox_inches='tight')
-    plt.show()
-
-
-def plot_roc_curve(y_true, y_scores, dataset_name, save_path='outputs/plots/'):
-    """Plot ROC curve"""
-    fpr, tpr, _ = roc_curve(y_true, y_scores)
-    roc_auc = auc(fpr, tpr)
-    
-    fig, ax = plt.subplots(figsize=(8, 6))
-    ax.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (AUC = {roc_auc:.3f})')
-    ax.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label='Random Classifier')
-    ax.set_xlim([0.0, 1.0])
-    ax.set_ylim([0.0, 1.05])
-    ax.set_xlabel('False Positive Rate')
-    ax.set_ylabel('True Positive Rate')
-    ax.set_title(f'ROC Curve - {dataset_name}')
-    ax.legend(loc="lower right")
-    ax.grid(True)
-    
-    plt.tight_layout()
-    plt.savefig(f"{save_path}/roc_curve_{dataset_name.lower()}.png", dpi=300, bbox_inches='tight')
-    plt.show()
-    
-    return roc_auc
-
-
-def plot_fuzzy_membership_functions(fuzzy_system, save_path='outputs/plots/fuzzy_memberships.png'):
-    """Plot fuzzy membership functions"""
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-    
-    x = np.linspace(0, 1, 100)
-    
-    with torch.no_grad():
-        for i, (ax, title) in enumerate(zip(axes, ['Text Confidence', 'Image Confidence'])):
-            centers = fuzzy_system.membership.centers[i].cpu().numpy()
-            sigmas = fuzzy_system.membership.sigmas[i].cpu().numpy()
-            
-            for j, (c, s) in enumerate(zip(centers, sigmas)):
-                mf = np.exp(-((x - c) ** 2) / (2 * s ** 2))
-                labels = ['Low', 'Medium', 'High']
-                ax.plot(x, mf, label=f'{labels[j]}')
-            
-            ax.set_xlabel('Confidence')
-            ax.set_ylabel('Membership Degree')
-            ax.set_title(f'Membership Functions - {title}')
-            ax.legend()
-            ax.grid(True)
-    
-    plt.tight_layout()
-    plt.savefig(save_path, dpi=300, bbox_inches='tight')
-    plt.show()
-
-
-def plot_rule_activation_strengths(rule_firings, dataset_name, save_path='outputs/plots/'):
-    """Plot rule activation strengths"""
-    rule_names = ['R1: T→Real, I→Real', 'R2: T→Fake, I→Real', 
-                  'R3: T→Real, I→Fake', 'R4: T→Fake, I→Fake']
-    
-    fig, ax = plt.subplots(figsize=(10, 6))
-    
-    # Calculate average activation per rule
-    avg_activations = rule_firings.mean(axis=0)
-    
-    bars = ax.bar(range(len(rule_names)), avg_activations, color=['green', 'orange', 'orange', 'red'])
-    ax.set_xticks(range(len(rule_names)))
-    ax.set_xticklabels(rule_names, rotation=45, ha='right')
-    ax.set_ylabel('Average Activation Strength')
-    ax.set_title(f'Fuzzy Rule Activation - {dataset_name}')
-    ax.grid(True, alpha=0.3)
-    
-    # Add value labels on bars
-    for bar, val in zip(bars, avg_activations):
-        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01, 
-                f'{val:.3f}', ha='center', va='bottom')
-    
-    plt.tight_layout()
-    plt.savefig(f"{save_path}/rule_activation_{dataset_name.lower()}.png", dpi=300, bbox_inches='tight')
-    plt.show()
-
-
-def plot_model_comparison(results_df, save_path='outputs/plots/model_comparison.png'):
-    """Plot comparison with existing models"""
-    fig, ax = plt.subplots(figsize=(12, 6))
-    
-    models = results_df['Model'].values
-    accuracy = results_df['Accuracy'].values
-    
-    bars = ax.bar(range(len(models)), accuracy, color='steelblue')
-    ax.set_xticks(range(len(models)))
-    ax.set_xticklabels(models, rotation=45, ha='right')
-    ax.set_ylabel('Accuracy')
-    ax.set_title('Model Comparison on Fake News Detection')
-    ax.set_ylim([0, 1])
-    
-    # Add value labels
-    for bar, val in zip(bars, accuracy):
-        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01, 
-                f'{val:.3f}', ha='center', va='bottom')
-    
-    plt.tight_layout()
-    plt.savefig(save_path, dpi=300, bbox_inches='tight')
-    plt.show()
-
-
-def plot_architecture_diagram(save_path='outputs/plots/architecture.png'):
-    """Plot Trustify architecture diagram"""
-    fig, ax = plt.subplots(figsize=(14, 8))
+    Args:
+        output_path: Save path for diagram
+    """
+    fig, ax = plt.subplots(figsize=(16, 12))
     ax.set_xlim(0, 10)
-    ax.set_ylim(0, 8)
+    ax.set_ylim(0, 12)
     ax.axis('off')
     
-    # Define components
-    components = {
-        'Input': (1, 7),
-        'Text': (2, 6.5),
-        'Image': (2, 5.5),
-        'LSTM': (3.5, 6.5),
-        'GNN': (3.5, 5.5),
-        'Transformer': (5, 6),
-        'Fusion': (6.5, 6),
-        'Fuzzy': (8, 6),
-        'Output': (9, 6)
-    }
+    # Colors
+    input_color = '#E8F4F8'
+    text_color = '#FFE8CC'
+    image_color = '#CCE8FF'
+    fusion_color = '#E8CCFF'
+    output_color = '#CCFFCC'
     
-    # Draw boxes
-    for name, (x, y) in components.items():
-        rect = plt.Rectangle((x-0.8, y-0.4), 1.6, 0.8, 
-                              facecolor='lightblue', edgecolor='black', linewidth=2)
-        ax.add_patch(rect)
-        ax.text(x, y, name, ha='center', va='center', fontsize=10, fontweight='bold')
+    # Title
+    ax.text(5, 11.5, 'Trustify: Architecture Overview', 
+            fontsize=20, fontweight='bold', ha='center')
     
-    # Draw arrows
-    arrows = [
-        ((1, 7), (2, 6.5)), ((1, 7), (2, 5.5)),
-        ((2, 6.5), (3.5, 6.5)), ((2, 5.5), (3.5, 5.5)),
-        ((3.5, 6.5), (5, 6)), ((3.5, 5.5), (5, 6)),
-        ((5, 6), (6.5, 6)), ((6.5, 6), (8, 6)), ((8, 6), (9, 6))
+    # ===== INPUT LAYER =====
+    input_box = FancyBboxPatch((3.5, 10), 3, 0.8,
+                               boxstyle="round,pad=0.1", 
+                               edgecolor='black', facecolor=input_color, linewidth=2)
+    ax.add_patch(input_box)
+    ax.text(5, 10.4, 'Input: Text + Image', fontsize=12, ha='center', fontweight='bold')
+    
+    # ===== TEXT BRANCH =====
+    y_text_start = 9.2
+    
+    # Text input
+    text_input = FancyBboxPatch((0.2, y_text_start), 2, 0.7,
+                                boxstyle="round,pad=0.05",
+                                edgecolor='black', facecolor=text_color, linewidth=1.5)
+    ax.add_patch(text_input)
+    ax.text(1.2, y_text_start + 0.35, 'Text Input', fontsize=10, ha='center')
+    
+    # Arrow down
+    arrow = FancyArrowPatch((1.2, y_text_start), (1.2, y_text_start - 0.5),
+                           arrowstyle='->', mutation_scale=20, linewidth=2)
+    ax.add_patch(arrow)
+    
+    # Tokenization
+    token_box = FancyBboxPatch((0.2, y_text_start - 1.2), 2, 0.7,
+                               boxstyle="round,pad=0.05",
+                               edgecolor='black', facecolor=text_color, linewidth=1.5)
+    ax.add_patch(token_box)
+    ax.text(1.2, y_text_start - 0.85, 'Tokenization', fontsize=10, ha='center')
+    
+    arrow = FancyArrowPatch((1.2, y_text_start - 1.2), (1.2, y_text_start - 1.7),
+                           arrowstyle='->', mutation_scale=20, linewidth=2)
+    ax.add_patch(arrow)
+    
+    # Word Embedding
+    embed_box = FancyBboxPatch((0.2, y_text_start - 2.4), 2, 0.7,
+                               boxstyle="round,pad=0.05",
+                               edgecolor='black', facecolor=text_color, linewidth=1.5)
+    ax.add_patch(embed_box)
+    ax.text(1.2, y_text_start - 2.05, 'Word Embedding', fontsize=10, ha='center')
+    
+    arrow = FancyArrowPatch((1.2, y_text_start - 2.4), (1.2, y_text_start - 2.9),
+                           arrowstyle='->', mutation_scale=20, linewidth=2)
+    ax.add_patch(arrow)
+    
+    # BiLSTM
+    lstm_box = FancyBboxPatch((0.2, y_text_start - 3.6), 2, 0.7,
+                              boxstyle="round,pad=0.05",
+                              edgecolor='black', facecolor=text_color, linewidth=1.5)
+    ax.add_patch(lstm_box)
+    ax.text(1.2, y_text_start - 3.25, 'BiLSTM', fontsize=10, ha='center', fontweight='bold')
+    
+    arrow = FancyArrowPatch((1.2, y_text_start - 3.6), (1.2, y_text_start - 4.1),
+                           arrowstyle='->', mutation_scale=20, linewidth=2)
+    ax.add_patch(arrow)
+    
+    # Text Features
+    text_feat = FancyBboxPatch((0.2, y_text_start - 4.8), 2, 0.7,
+                               boxstyle="round,pad=0.05",
+                               edgecolor='black', facecolor=text_color, linewidth=1.5)
+    ax.add_patch(text_feat)
+    ax.text(1.2, y_text_start - 4.45, 'Text Features', fontsize=10, ha='center', fontweight='bold')
+    
+    # ===== IMAGE BRANCH =====
+    y_image_start = 9.2
+    
+    # Image input
+    image_input = FancyBboxPatch((7.8, y_image_start), 2, 0.7,
+                                 boxstyle="round,pad=0.05",
+                                 edgecolor='black', facecolor=image_color, linewidth=1.5)
+    ax.add_patch(image_input)
+    ax.text(8.8, y_image_start + 0.35, 'Image Input', fontsize=10, ha='center')
+    
+    arrow = FancyArrowPatch((8.8, y_image_start), (8.8, y_image_start - 0.5),
+                           arrowstyle='->', mutation_scale=20, linewidth=2)
+    ax.add_patch(arrow)
+    
+    # ResNet50
+    resnet_box = FancyBboxPatch((7.8, y_image_start - 1.2), 2, 0.7,
+                                boxstyle="round,pad=0.05",
+                                edgecolor='black', facecolor=image_color, linewidth=1.5)
+    ax.add_patch(resnet_box)
+    ax.text(8.8, y_image_start - 0.85, 'ResNet50', fontsize=10, ha='center')
+    
+    arrow = FancyArrowPatch((8.8, y_image_start - 1.2), (8.8, y_image_start - 1.7),
+                           arrowstyle='->', mutation_scale=20, linewidth=2)
+    ax.add_patch(arrow)
+    
+    # GNN
+    gnn_box = FancyBboxPatch((7.8, y_image_start - 2.4), 2, 0.7,
+                             boxstyle="round,pad=0.05",
+                             edgecolor='black', facecolor=image_color, linewidth=1.5)
+    ax.add_patch(gnn_box)
+    ax.text(8.8, y_image_start - 2.05, 'Graph Neural Network', fontsize=9, ha='center')
+    
+    arrow = FancyArrowPatch((8.8, y_image_start - 2.4), (8.8, y_image_start - 2.9),
+                           arrowstyle='->', mutation_scale=20, linewidth=2)
+    ax.add_patch(arrow)
+    
+    # Transformer
+    transformer_box = FancyBboxPatch((7.8, y_image_start - 3.6), 2, 0.7,
+                                    boxstyle="round,pad=0.05",
+                                    edgecolor='black', facecolor=image_color, linewidth=1.5)
+    ax.add_patch(transformer_box)
+    ax.text(8.8, y_image_start - 3.25, 'Transformer', fontsize=10, ha='center', fontweight='bold')
+    
+    arrow = FancyArrowPatch((8.8, y_image_start - 3.6), (8.8, y_image_start - 4.1),
+                           arrowstyle='->', mutation_scale=20, linewidth=2)
+    ax.add_patch(arrow)
+    
+    # Image Features
+    image_feat = FancyBboxPatch((7.8, y_image_start - 4.8), 2, 0.7,
+                                boxstyle="round,pad=0.05",
+                                edgecolor='black', facecolor=image_color, linewidth=1.5)
+    ax.add_patch(image_feat)
+    ax.text(8.8, y_image_start - 4.45, 'Image Features', fontsize=10, ha='center', fontweight='bold')
+    
+    # ===== FUSION LAYER =====
+    # Arrows to fusion
+    arrow = FancyArrowPatch((2.2, y_text_start - 4.45), (4, 3.5),
+                           arrowstyle='->', mutation_scale=25, linewidth=2.5, color='purple')
+    ax.add_patch(arrow)
+    
+    arrow = FancyArrowPatch((7.8, y_image_start - 4.45), (6, 3.5),
+                           arrowstyle='->', mutation_scale=25, linewidth=2.5, color='purple')
+    ax.add_patch(arrow)
+    
+    # Similarity Module
+    similarity_box = FancyBboxPatch((3, 2.8), 4, 0.6,
+                                   boxstyle="round,pad=0.05",
+                                   edgecolor='black', facecolor=fusion_color, linewidth=1.5)
+    ax.add_patch(similarity_box)
+    ax.text(5, 3.1, 'Text-Image Similarity Module', fontsize=11, ha='center', fontweight='bold')
+    
+    arrow = FancyArrowPatch((5, 2.8), (5, 2.3),
+                           arrowstyle='->', mutation_scale=20, linewidth=2)
+    ax.add_patch(arrow)
+    
+    # Fuzzy Logic Layer
+    fuzzy_box = FancyBboxPatch((2.5, 1.3), 5, 1,
+                              boxstyle="round,pad=0.1",
+                              edgecolor='black', facecolor=fusion_color, linewidth=2)
+    ax.add_patch(fuzzy_box)
+    ax.text(5, 2.05, 'Fuzzy Logic Decision Layer', fontsize=12, ha='center', fontweight='bold')
+    ax.text(5, 1.65, 'Fuzzification → Rule Base → Inference → Defuzzification', 
+            fontsize=9, ha='center', style='italic')
+    
+    arrow = FancyArrowPatch((5, 1.3), (5, 0.8),
+                           arrowstyle='->', mutation_scale=20, linewidth=2)
+    ax.add_patch(arrow)
+    
+    # ===== OUTPUT LAYER =====
+    output_box = FancyBboxPatch((3.5, 0), 3, 0.8,
+                                boxstyle="round,pad=0.1",
+                                edgecolor='black', facecolor=output_color, linewidth=2)
+    ax.add_patch(output_box)
+    ax.text(5, 0.4, 'Output: Real/Fake (with Confidence)', 
+            fontsize=12, ha='center', fontweight='bold')
+    
+    # Legend
+    legend_y = 11
+    ax.text(0.2, legend_y, 'Legend:', fontsize=10, fontweight='bold')
+    
+    legend_items = [
+        (input_color, 'Input/Output'),
+        (text_color, 'Text Processing'),
+        (image_color, 'Image Processing'),
+        (fusion_color, 'Fusion'),
     ]
     
-    for start, end in arrows:
-        ax.annotate('', xy=end, xytext=start,
-                   arrowprops=dict(arrowstyle='->', lw=1.5, color='gray'))
-    
-    ax.set_title('Trustify Architecture', fontsize=14, fontweight='bold', y=0.98)
-    
-    plt.tight_layout()
-    plt.savefig(save_path, dpi=300, bbox_inches='tight')
-    plt.show()
-
-
-def plot_performance_metrics(metrics_dict, dataset_name, save_path='outputs/plots/'):
-    """Plot performance metrics"""
-    fig, ax = plt.subplots(figsize=(10, 6))
-    
-    metrics = list(metrics_dict.keys())
-    values = list(metrics_dict.values())
-    
-    bars = ax.bar(metrics, values, color=['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728'])
-    ax.set_ylim([0, 1])
-    ax.set_ylabel('Score')
-    ax.set_title(f'Performance Metrics - {dataset_name}')
-    
-    for bar, val in zip(bars, values):
-        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01, 
-                f'{val:.3f}', ha='center', va='bottom')
+    for idx, (color, label) in enumerate(legend_items):
+        y = legend_y - (idx + 1) * 0.35
+        rect = mpatches.Rectangle((0.2, y - 0.12), 0.2, 0.2, 
+                                  facecolor=color, edgecolor='black', linewidth=1)
+        ax.add_patch(rect)
+        ax.text(0.5, y, label, fontsize=9, va='center')
     
     plt.tight_layout()
-    plt.savefig(f"{save_path}/metrics_{dataset_name.lower()}.png", dpi=300, bbox_inches='tight')
-    plt.show()
+    
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(output_path, dpi=300, bbox_inches='tight', facecolor='white')
+    plt.close()
+    
+    logger.info(f"Saved architecture diagram to {output_path}")
 
 
-def visualize_graph_network(node_features, adjacency_matrix, save_path='outputs/plots/graph_network.png'):
-    """Visualize GNN graph structure"""
-    G = nx.Graph()
+def plot_model_comparison(all_results: dict, output_path: str = 'plots/model_comparison.png'):
+    """
+    Plot comparison of different models.
     
-    num_nodes = node_features.shape[0]
+    Args:
+        all_results: Dictionary with model results
+        output_path: Save path
+    """
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
     
-    # Add nodes
-    for i in range(num_nodes):
-        G.add_node(i)
+    models = list(all_results.keys())
+    metrics = ['accuracy', 'precision', 'recall', 'f1_score']
     
-    # Add edges based on adjacency matrix
-    for i in range(num_nodes):
-        for j in range(i+1, num_nodes):
-            if adjacency_matrix[i, j] > 0.3:
-                G.add_edge(i, j, weight=adjacency_matrix[i, j])
+    for idx, metric in enumerate(metrics):
+        ax = axes[idx // 2, idx % 2]
+        
+        values = [all_results[model][metric] for model in models]
+        colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A']
+        
+        bars = ax.bar(range(len(models)), values, color=colors[:len(models)])
+        ax.set_ylabel(metric.replace('_', ' ').capitalize(), fontsize=11)
+        ax.set_title(f'{metric.replace("_", " ").capitalize()} Comparison', fontsize=12, fontweight='bold')
+        ax.set_xticks(range(len(models)))
+        ax.set_xticklabels(models, rotation=45, ha='right')
+        ax.set_ylim([0, 1.05])
+        ax.grid(True, alpha=0.3, axis='y')
+        
+        # Add value labels
+        for i, (bar, val) in enumerate(zip(bars, values)):
+            ax.text(bar.get_x() + bar.get_width()/2, val + 0.02, 
+                   f'{val:.3f}', ha='center', va='bottom', fontsize=10, fontweight='bold')
     
-    fig, ax = plt.subplots(figsize=(10, 8))
-    
-    pos = nx.spring_layout(G, k=0.3, iterations=50)
-    nx.draw(G, pos, with_labels=True, node_color='lightblue', 
-            node_size=500, font_size=10, font_weight='bold',
-            edge_color='gray', width=1.5, ax=ax)
-    
-    ax.set_title('GNN Graph Structure for Image Region Relationships')
-    
+    plt.suptitle('Trustify vs Other Models', fontsize=14, fontweight='bold', y=1.00)
     plt.tight_layout()
-    plt.savefig(save_path, dpi=300, bbox_inches='tight')
-    plt.show()
+    
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(output_path, dpi=300, bbox_inches='tight', facecolor='white')
+    plt.close()
+    
+    logger.info(f"Saved model comparison to {output_path}")
+
+
+if __name__ == "__main__":
+    # Generate architecture diagram
+    plot_trustify_architecture()
+    
+    # Example model comparison
+    sample_results = {
+        'LSTM (Text Only)': {'accuracy': 0.938, 'precision': 0.968, 'recall': 0.944, 'f1_score': 0.955},
+        'ResNet+GNN (Image Only)': {'accuracy': 0.965, 'precision': 0.987, 'recall': 0.960, 'f1_score': 0.973},
+        'Trustify (Hybrid)': {'accuracy': 0.961, 'precision': 0.984, 'recall': 0.972, 'f1_score': 0.978},
+    }
+    
+    plot_model_comparison(sample_results)
+    logger.info("✓ Visualization complete!")

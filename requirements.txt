@@ -1,16 +1,57 @@
-torch>=2.0.0
-torchvision>=0.15.0
-transformers>=4.30.0
-numpy>=1.24.0
-pandas>=2.0.0
-scikit-learn>=1.3.0
-matplotlib>=3.7.0
-seaborn>=0.12.0
-pillow>=9.5.0
-opencv-python>=4.8.0
-scipy>=1.10.0
-networkx>=3.0
-tqdm>=4.65.0
-kagglehub>=0.2.0
-plotly>=5.14.0
-requests>=2.31.0
+# Core ML Framework
+torch==2.2.0
+torchvision==0.17.0
+torchaudio==0.17.0
+
+# Data Processing
+numpy==1.24.3
+pandas==2.0.3
+scikit-learn==1.3.0
+scipy==1.11.2
+
+# NLP
+nltk==3.8.1
+transformers==4.32.0
+word2vec==1.0.1
+gensim==4.3.1
+
+# Image Processing
+Pillow==10.0.0
+opencv-python==4.8.0.74
+scikit-image==0.21.0
+
+# Graph Neural Networks
+torch-geometric==2.3.1
+networkx==3.1
+
+# Data Crawling
+tweepy==4.14.0
+beautifulsoup4==4.12.2
+newspaper3k==0.2.8
+requests==2.31.0
+lxml==4.9.3
+
+# Visualization & Plotting
+matplotlib==3.7.2
+seaborn==0.12.2
+plotly==5.17.0
+
+# Utilities
+pyyaml==6.0
+python-dotenv==1.0.0
+tqdm==4.66.1
+logging-decorator==2.6
+
+# Experiment Tracking (Optional)
+tensorboard==2.14.0
+wandb==0.15.8
+
+# Code Quality
+black==23.9.1
+flake8==6.1.0
+isort==5.12.0
+
+# Jupyter
+jupyter==1.0.0
+jupyterlab==4.0.6
+ipywidgets==8.1.0
